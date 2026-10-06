@@ -68,6 +68,7 @@ const STORAGE_KEY_AREAS = 'org_app_areas_data_v6';
 const STORAGE_KEY_REV = 'org_app_revision_code';
 const STORAGE_KEY_DATE = 'org_app_export_date';
 const STORAGE_KEY_ORIENTATION = 'org_app_layout_orientation';
+const STORAGE_KEY_ORIENTATION_INIT = 'org_app_orientation_init_lr_v2';
 const STORAGE_KEY_DENSITY = 'org_app_layout_density';
 
 export const OrganigramProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -79,10 +80,10 @@ export const OrganigramProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.removeItem('org_app_areas_data_v3');
       localStorage.removeItem('org_app_areas_data_v4');
       localStorage.removeItem('org_app_areas_data_v5');
-      // If previous session stored 'LR', update to 'TB' (Vertical) as default requested
-      const savedOri = localStorage.getItem(STORAGE_KEY_ORIENTATION);
-      if (savedOri === 'LR') {
-        localStorage.setItem(STORAGE_KEY_ORIENTATION, 'TB');
+      // Ensure default orientation is stored in localStorage if missing
+      const saved = localStorage.getItem(STORAGE_KEY_ORIENTATION);
+      if (!saved) {
+        localStorage.setItem(STORAGE_KEY_ORIENTATION, 'LR');
       }
     } catch {
       // ignore
@@ -123,12 +124,20 @@ export const OrganigramProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [layoutOrientation, setLayoutOrientationState] = useState<LayoutOrientation>(() => {
     try {
+      const isInitialized = localStorage.getItem(STORAGE_KEY_ORIENTATION_INIT);
+      if (!isInitialized) {
+        // User requested default horizontal view ('LR'), save to localStorage
+        localStorage.setItem(STORAGE_KEY_ORIENTATION, 'LR');
+        localStorage.setItem(STORAGE_KEY_ORIENTATION_INIT, 'true');
+        return 'LR';
+      }
       const saved = localStorage.getItem(STORAGE_KEY_ORIENTATION);
-      if (saved === 'TB') return 'TB';
+      if (saved === 'LR' || saved === 'TB') return saved;
+      localStorage.setItem(STORAGE_KEY_ORIENTATION, 'LR');
     } catch {
       // ignore
     }
-    return 'TB'; // Default to Vertical (Top-to-Bottom / Portrait)
+    return 'LR'; // Default to Horizontal (Left-to-Right) as requested
   });
 
   const [density, setDensityState] = useState<LayoutDensity>(() => {

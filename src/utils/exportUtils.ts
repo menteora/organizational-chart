@@ -121,17 +121,15 @@ export async function generateA4OptimizedImages(
     // A4 Vertical (Portrait) standard dimensions (300 DPI: 1754 x 2480 px / 210 x 297 mm)
     const a4PageWidth = 1754;
     const a4PageHeight = 2480;
-    const marginX = 70;
-    const marginTop = 85;
-    const marginBottom = 75;
-    const usableWidth = a4PageWidth - marginX * 2; // 1614 px
-    const usableHeight = a4PageHeight - marginTop - marginBottom; // 2320 px
+    const margin = 60;
+    const usableWidth = a4PageWidth - margin * 2;
+    const usableHeight = a4PageHeight - margin * 2;
 
     const results: A4PageImage[] = [];
     const naturalAspect = origW / origH;
-    const targetAspect = usableWidth / usableHeight; // ~0.695 (vertical)
+    const targetAspect = usableWidth / usableHeight;
 
-    // 1. ALWAYS produce a single full-diagram page fitted onto standard vertical A4
+    // 1. ALWAYS produce a single full-diagram page fitted onto standard vertical A4 without extra headers/footers
     const singleCanvas = document.createElement('canvas');
     singleCanvas.width = a4PageWidth;
     singleCanvas.height = a4PageHeight;
@@ -143,16 +141,10 @@ export async function generateA4OptimizedImages(
       const scale = Math.min(usableWidth / origW, usableHeight / origH);
       const drawW = origW * scale;
       const drawH = origH * scale;
-      const drawX = marginX + (usableWidth - drawW) / 2;
-      const drawY = marginTop + (usableHeight - drawH) / 2;
+      const drawX = margin + (usableWidth - drawW) / 2;
+      const drawY = margin + (usableHeight - drawH) / 2;
 
       singleCtx.drawImage(img, 0, 0, origW, origH, drawX, drawY, drawW, drawH);
-
-      // A4 Vertical label footer
-      singleCtx.fillStyle = '#64748b';
-      singleCtx.font = 'bold 18px monospace';
-      singleCtx.textAlign = 'right';
-      singleCtx.fillText('FORMATO A4 VERTICALE • DOCUMENTO UFFICIALE', a4PageWidth - marginX, a4PageHeight - 32);
 
       const singleDataUrl = singleCanvas.toDataURL('image/png');
       results.push({
@@ -187,21 +179,10 @@ export async function generateA4OptimizedImages(
         const scale = Math.min(usableWidth / srcW, usableHeight / srcH);
         const drawW = srcW * scale;
         const drawH = srcH * scale;
-        const drawX = marginX + (usableWidth - drawW) / 2;
-        const drawY = marginTop + (usableHeight - drawH) / 2;
+        const drawX = margin + (usableWidth - drawW) / 2;
+        const drawY = margin + (usableHeight - drawH) / 2;
 
         ctx.drawImage(img, srcX, srcY, srcW, srcH, drawX, drawY, drawW, drawH);
-
-        // Header and footer for sequential vertical pages
-        ctx.fillStyle = '#334155';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Pagina ${i + 1} di ${sliceCount} (Sezione Orizzontale ${i + 1}/${sliceCount})`, marginX, 55);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 18px monospace';
-        ctx.textAlign = 'right';
-        ctx.fillText(`FORMATO A4 VERTICALE • PARTE ${i + 1}/${sliceCount}`, a4PageWidth - marginX, a4PageHeight - 32);
 
         const a4DataUrl = canvas.toDataURL('image/png');
         results.push({
@@ -235,21 +216,10 @@ export async function generateA4OptimizedImages(
         const scale = Math.min(usableWidth / srcW, usableHeight / srcH);
         const drawW = srcW * scale;
         const drawH = srcH * scale;
-        const drawX = marginX + (usableWidth - drawW) / 2;
-        const drawY = marginTop + (usableHeight - drawH) / 2;
+        const drawX = margin + (usableWidth - drawW) / 2;
+        const drawY = margin + (usableHeight - drawH) / 2;
 
         ctx.drawImage(img, srcX, srcY, srcW, srcH, drawX, drawY, drawW, drawH);
-
-        // Header and footer
-        ctx.fillStyle = '#334155';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Pagina ${i + 1} di ${sliceCount} (Sezione Verticale ${i + 1}/${sliceCount})`, marginX, 55);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 18px monospace';
-        ctx.textAlign = 'right';
-        ctx.fillText(`FORMATO A4 VERTICALE • PARTE ${i + 1}/${sliceCount}`, a4PageWidth - marginX, a4PageHeight - 32);
 
         const a4DataUrl = canvas.toDataURL('image/png');
         results.push({
@@ -283,11 +253,9 @@ export async function generateA4HorizontalImages(
 
     const a4PageWidth = 2480;
     const a4PageHeight = 1754;
-    const marginX = 80;
-    const marginTop = 70;
-    const marginBottom = 60;
-    const usableWidth = a4PageWidth - marginX * 2;
-    const usableHeight = a4PageHeight - marginTop - marginBottom;
+    const margin = 60;
+    const usableWidth = a4PageWidth - margin * 2;
+    const usableHeight = a4PageHeight - margin * 2;
 
     const canvas = document.createElement('canvas');
     canvas.width = a4PageWidth;
@@ -301,15 +269,10 @@ export async function generateA4HorizontalImages(
     const scale = Math.min(usableWidth / origW, usableHeight / origH);
     const drawW = origW * scale;
     const drawH = origH * scale;
-    const drawX = marginX + (usableWidth - drawW) / 2;
-    const drawY = marginTop + (usableHeight - drawH) / 2;
+    const drawX = margin + (usableWidth - drawW) / 2;
+    const drawY = margin + (usableHeight - drawH) / 2;
 
     ctx.drawImage(img, 0, 0, origW, origH, drawX, drawY, drawW, drawH);
-
-    ctx.fillStyle = '#64748b';
-    ctx.font = 'bold 18px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText('FORMATO A4 ORIZZONTALE • DOCUMENTO UFFICIALE', a4PageWidth - marginX, a4PageHeight - 25);
 
     const dataUrl = canvas.toDataURL('image/png');
     return [{
