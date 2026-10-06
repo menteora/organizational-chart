@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useOrganigram } from '../../context/OrganigramContext';
 import { useTheme } from '../../context/ThemeContext';
 import { formatSheetTabTitle } from '../../constants/initialData';
+import { getTodayDateFormatted } from '../../utils/exportUtils';
 import {
   Download,
   Upload,
@@ -468,15 +469,28 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Data Formato YYYYMMDD (es. 20260624)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-semibold text-slate-700 dark:text-slate-300">
+                    Data Formato YYYYMMDD (es. 20260624)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTempDate(getTodayDateFormatted())}
+                    className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+                  >
+                    Usa Data di Oggi
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={tempDate}
                   onChange={(e) => setTempDate(e.target.value)}
+                  placeholder="20260624"
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Questa data rappresenta l'emissione ufficiale della revisione e viene mantenuta come riferimento per tutti i file esportati.
+                </p>
               </div>
 
               <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] text-slate-600 dark:text-slate-400 font-mono">

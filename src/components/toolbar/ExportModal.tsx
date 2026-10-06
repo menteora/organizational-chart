@@ -33,6 +33,7 @@ import {
   copyElementAsA4VerticalPngToClipboard,
   exportElementAsA4HorizontalPng,
   copyElementAsA4HorizontalPngToClipboard,
+  getTodayDateFormatted,
   ZipExportProgress,
 } from '../../utils/exportUtils';
 import { generateMermaidFromArea } from '../../utils/mermaidParser';
@@ -295,15 +296,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="font-semibold text-slate-700 dark:text-slate-300">
-                  Data Esportazione
+                  Data File / Esportazione
                 </label>
-                <button
-                  type="button"
-                  onClick={setTodayDate}
-                  className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
-                >
-                  Oggi
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setExportDate(getTodayDateFormatted())}
+                    className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+                    title="Usa la data odierna del download"
+                  >
+                    Oggi
+                  </button>
+                </div>
               </div>
               <input
                 type="text"
@@ -312,6 +316,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 placeholder="20260624"
                 className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-slate-900 dark:text-slate-100"
               />
+              <span className="text-[10px] text-slate-400 mt-0.5 block">
+                Usa la data di emissione della revisione (es. 20260624) o quella odierna di download.
+              </span>
             </div>
           </div>
 

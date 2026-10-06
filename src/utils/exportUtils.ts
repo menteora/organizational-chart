@@ -9,6 +9,17 @@ import { OrganigrammaBackup, OrgArea } from '../types';
 import { generateMermaidFromArea } from './mermaidParser';
 
 /**
+ * Returns today's date formatted as YYYYMMDD (e.g. 20261006)
+ */
+export function getTodayDateFormatted(): string {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
+}
+
+/**
  * Formats the required filename:
  * e.g. ORG_DIAGRAMMA_SUPPORTO_REV.07_20260624.png
  */
