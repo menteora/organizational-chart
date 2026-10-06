@@ -102,9 +102,10 @@ export interface A4PageImage {
 
 /**
  * Processes an original PNG data URL and generates A4-optimized page-ready images:
- * - Fits onto standard A4 landscape proportions (2480 x 1754 px @ 300dpi / A4 Landscape)
- * - If the diagram is very wide or long, it splits it cleanly across sequential pages (Parte 1 di N, etc.)
- *   with proper margins and page numbering header/footer so it can be pasted directly into Word/A4 docs without resizing issues.
+ * - Fits onto standard A4 VERTICAL / PORTRAIT proportions (1754 x 2480 px @ 300 DPI / 210 x 297 mm)
+ * - Always includes a single-page full diagram fitted into A4 Vertical.
+ * - If the diagram is wide or long, it also splits it cleanly across sequential vertical pages (Parte 1 di N, etc.)
+ *   with proper margins and page numbering header/footer so it can be pasted directly into vertical Word/Docs pages without resizing issues.
  */
 export async function generateA4OptimizedImages(
   sourceDataUrl: string,
@@ -117,32 +118,27 @@ export async function generateA4OptimizedImages(
 
     if (origW === 0 || origH === 0) return [];
 
-    // A4 Landscape standard dimensions (approx 300 DPI: 2480 x 1754 px)
-    const a4PageWidth = 2480;
-    const a4PageHeight = 1754;
-    const marginX = 80;
-    const marginTop = 90;
-    const marginBottom = 80;
-    const usableWidth = a4PageWidth - marginX * 2;
-    const usableHeight = a4PageHeight - marginTop - marginBottom;
+    // A4 Vertical (Portrait) standard dimensions (300 DPI: 1754 x 2480 px / 210 x 297 mm)
+    const a4PageWidth = 1754;
+    const a4PageHeight = 2480;
+    const marginX = 70;
+    const marginTop = 85;
+    const marginBottom = 75;
+    const usableWidth = a4PageWidth - marginX * 2; // 1614 px
+    const usableHeight = a4PageHeight - marginTop - marginBottom; // 2320 px
 
     const results: A4PageImage[] = [];
     const naturalAspect = origW / origH;
-    const targetAspect = usableWidth / usableHeight; // ~1.46
+    const targetAspect = usableWidth / usableHeight; // ~0.695 (vertical)
 
-    const isExtremelyWide = naturalAspect > targetAspect * 1.5; // wider than 2.2:1
-    const isExtremelyTall = naturalAspect < 0.6; // very tall vertical diagram
-
-    if (!isExtremelyWide && !isExtremelyTall) {
-      // Fits neatly on 1 A4 page
-      const canvas = document.createElement('canvas');
-      canvas.width = a4PageWidth;
-      canvas.height = a4PageHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return [];
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, a4PageWidth, a4PageHeight);
+    // 1. ALWAYS produce a single full-diagram page fitted onto standard vertical A4
+    const singleCanvas = document.createElement('canvas');
+    singleCanvas.width = a4PageWidth;
+    singleCanvas.height = a4PageHeight;
+    const singleCtx = singleCanvas.getContext('2d');
+    if (singleCtx) {
+      singleCtx.fillStyle = '#ffffff';
+      singleCtx.fillRect(0, 0, a4PageWidth, a4PageHeight);
 
       const scale = Math.min(usableWidth / origW, usableHeight / origH);
       const drawW = origW * scale;
@@ -150,23 +146,25 @@ export async function generateA4OptimizedImages(
       const drawX = marginX + (usableWidth - drawW) / 2;
       const drawY = marginTop + (usableHeight - drawH) / 2;
 
-      ctx.drawImage(img, 0, 0, origW, origH, drawX, drawY, drawW, drawH);
+      singleCtx.drawImage(img, 0, 0, origW, origH, drawX, drawY, drawW, drawH);
 
-      // A4 Label footer
-      ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 20px monospace';
-      ctx.textAlign = 'right';
-      ctx.fillText('OTTIMIZZATO PER FORMATO A4 ORIZZONTALE (PAGINA SINGOLA)', a4PageWidth - marginX, a4PageHeight - 35);
+      // A4 Vertical label footer
+      singleCtx.fillStyle = '#64748b';
+      singleCtx.font = 'bold 18px monospace';
+      singleCtx.textAlign = 'right';
+      singleCtx.fillText('FORMATO A4 VERTICALE • DOCUMENTO UFFICIALE', a4PageWidth - marginX, a4PageHeight - 32);
 
-      const a4DataUrl = canvas.toDataURL('image/png');
+      const singleDataUrl = singleCanvas.toDataURL('image/png');
       results.push({
-        filename: `${baseFilenameNoExt}_A4_PAGINA_SINGOLA.png`,
-        base64: a4DataUrl.replace(/^data:image\/png;base64,/, ''),
+        filename: `${baseFilenameNoExt}_A4_VERTICALE.png`,
+        base64: singleDataUrl.replace(/^data:image\/png;base64,/, ''),
         partIndex: 1,
         totalParts: 1,
       });
-    } else if (isExtremelyWide) {
-      // Split horizontally across multiple pages (e.g. 2, 3 or 4 pages)
+    }
+
+    // 2. If diagram is wide (naturalAspect > 1.15), split horizontally across sequential vertical A4 pages
+    if (naturalAspect > 1.15) {
       const sliceCount = Math.min(4, Math.max(2, Math.ceil(naturalAspect / targetAspect)));
       const sliceWidth = origW / sliceCount;
       const overlap = sliceWidth * 0.04;
@@ -194,7 +192,7 @@ export async function generateA4OptimizedImages(
 
         ctx.drawImage(img, srcX, srcY, srcW, srcH, drawX, drawY, drawW, drawH);
 
-        // Page header / footer for doc insertion
+        // Header and footer for sequential vertical pages
         ctx.fillStyle = '#334155';
         ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'left';
@@ -203,19 +201,19 @@ export async function generateA4OptimizedImages(
         ctx.fillStyle = '#94a3b8';
         ctx.font = 'bold 18px monospace';
         ctx.textAlign = 'right';
-        ctx.fillText(`FORMATO A4 • PARTE ${i + 1}/${sliceCount}`, a4PageWidth - marginX, a4PageHeight - 35);
+        ctx.fillText(`FORMATO A4 VERTICALE • PARTE ${i + 1}/${sliceCount}`, a4PageWidth - marginX, a4PageHeight - 32);
 
         const a4DataUrl = canvas.toDataURL('image/png');
         results.push({
-          filename: `${baseFilenameNoExt}_A4_PARTE_${i + 1}_DI_${sliceCount}.png`,
+          filename: `${baseFilenameNoExt}_A4_VERTICALE_PARTE_${i + 1}_DI_${sliceCount}.png`,
           base64: a4DataUrl.replace(/^data:image\/png;base64,/, ''),
           partIndex: i + 1,
           totalParts: sliceCount,
         });
       }
-    } else {
-      // Extremely tall: split vertically into sequential pages
-      const sliceCount = Math.min(3, Math.max(2, Math.ceil(targetAspect / naturalAspect)));
+    } else if (naturalAspect < 0.45) {
+      // 3. If diagram is very tall, split vertically across sequential vertical A4 pages
+      const sliceCount = Math.min(4, Math.max(2, Math.ceil(targetAspect / naturalAspect)));
       const sliceHeight = origH / sliceCount;
       const overlap = sliceHeight * 0.04;
 
@@ -242,7 +240,7 @@ export async function generateA4OptimizedImages(
 
         ctx.drawImage(img, srcX, srcY, srcW, srcH, drawX, drawY, drawW, drawH);
 
-        // Page header / footer
+        // Header and footer
         ctx.fillStyle = '#334155';
         ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'left';
@@ -251,11 +249,11 @@ export async function generateA4OptimizedImages(
         ctx.fillStyle = '#94a3b8';
         ctx.font = 'bold 18px monospace';
         ctx.textAlign = 'right';
-        ctx.fillText(`FORMATO A4 • PARTE ${i + 1}/${sliceCount}`, a4PageWidth - marginX, a4PageHeight - 35);
+        ctx.fillText(`FORMATO A4 VERTICALE • PARTE ${i + 1}/${sliceCount}`, a4PageWidth - marginX, a4PageHeight - 32);
 
         const a4DataUrl = canvas.toDataURL('image/png');
         results.push({
-          filename: `${baseFilenameNoExt}_A4_PARTE_${i + 1}_DI_${sliceCount}.png`,
+          filename: `${baseFilenameNoExt}_A4_VERTICALE_PARTE_${i + 1}_DI_${sliceCount}.png`,
           base64: a4DataUrl.replace(/^data:image\/png;base64,/, ''),
           partIndex: i + 1,
           totalParts: sliceCount,
@@ -268,6 +266,240 @@ export async function generateA4OptimizedImages(
     console.error('Errore durante la generazione delle immagini A4:', err);
     return [];
   }
+}
+
+/**
+ * Generates an A4 Horizontal (Landscape: 2480 x 1754 px @ 300 DPI) page-ready image
+ */
+export async function generateA4HorizontalImages(
+  sourceDataUrl: string,
+  baseFilenameNoExt: string
+): Promise<A4PageImage[]> {
+  try {
+    const img = await loadImage(sourceDataUrl);
+    const origW = img.naturalWidth || img.width;
+    const origH = img.naturalHeight || img.height;
+    if (origW === 0 || origH === 0) return [];
+
+    const a4PageWidth = 2480;
+    const a4PageHeight = 1754;
+    const marginX = 80;
+    const marginTop = 70;
+    const marginBottom = 60;
+    const usableWidth = a4PageWidth - marginX * 2;
+    const usableHeight = a4PageHeight - marginTop - marginBottom;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = a4PageWidth;
+    canvas.height = a4PageHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, a4PageWidth, a4PageHeight);
+
+    const scale = Math.min(usableWidth / origW, usableHeight / origH);
+    const drawW = origW * scale;
+    const drawH = origH * scale;
+    const drawX = marginX + (usableWidth - drawW) / 2;
+    const drawY = marginTop + (usableHeight - drawH) / 2;
+
+    ctx.drawImage(img, 0, 0, origW, origH, drawX, drawY, drawW, drawH);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('FORMATO A4 ORIZZONTALE • DOCUMENTO UFFICIALE', a4PageWidth - marginX, a4PageHeight - 25);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    return [{
+      filename: `${baseFilenameNoExt}_A4_ORIZZONTALE.png`,
+      base64: dataUrl.replace(/^data:image\/png;base64,/, ''),
+      partIndex: 1,
+      totalParts: 1,
+    }];
+  } catch (err) {
+    console.error('Errore durante la generazione A4 orizzontale:', err);
+    return [];
+  }
+}
+
+/**
+ * Exports a DOM element as an A4 Horizontal (Landscape) image
+ */
+export async function exportElementAsA4HorizontalPng(
+  element: HTMLElement,
+  filename: string,
+  scale: number = 2,
+  isDark: boolean = false
+): Promise<string> {
+  const bgColor = isDark ? '#090d16' : '#ffffff';
+  const dataUrl = await toPng(element, {
+    pixelRatio: scale,
+    backgroundColor: bgColor,
+    cacheBust: true,
+    style: { transform: 'none', margin: '0', overflow: 'visible', maxWidth: 'none' },
+    filter: (node) => {
+      if (node instanceof HTMLElement) {
+        if (node.dataset?.excludeExport === 'true' || node.classList?.contains('no-export')) {
+          return false;
+        }
+      }
+      return true;
+    },
+  });
+
+  const baseFilenameNoExt = filename.replace(/\.png$/i, '');
+  const a4Images = await generateA4HorizontalImages(dataUrl, baseFilenameNoExt);
+  if (a4Images.length > 0) {
+    const singlePage = a4Images[0];
+    const byteCharacters = atob(singlePage.base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+    triggerBlobDownload(blob, singlePage.filename);
+    return singlePage.filename;
+  }
+  return filename;
+}
+
+/**
+ * Copies a DOM element as an A4 Horizontal (Landscape) image to clipboard
+ */
+export async function copyElementAsA4HorizontalPngToClipboard(
+  element: HTMLElement,
+  scale: number = 2,
+  isDark: boolean = false
+): Promise<boolean> {
+  const bgColor = isDark ? '#090d16' : '#ffffff';
+  const dataUrl = await toPng(element, {
+    pixelRatio: scale,
+    backgroundColor: bgColor,
+    cacheBust: true,
+    style: { transform: 'none', margin: '0', overflow: 'visible', maxWidth: 'none' },
+    filter: (node) => {
+      if (node instanceof HTMLElement) {
+        if (node.dataset?.excludeExport === 'true' || node.classList?.contains('no-export')) {
+          return false;
+        }
+      }
+      return true;
+    },
+  });
+
+  const a4Images = await generateA4HorizontalImages(dataUrl, 'A4_ORIZZONTALE');
+  if (a4Images.length > 0) {
+    const singlePage = a4Images[0];
+    const byteCharacters = atob(singlePage.base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Exports a DOM element as an A4 Vertical (Portrait: 1754 x 2480 px @ 300 DPI) page-ready image
+ */
+export async function exportElementAsA4VerticalPng(
+  element: HTMLElement,
+  filename: string,
+  scale: number = 2,
+  isDark: boolean = false
+): Promise<string> {
+  const bgColor = isDark ? '#090d16' : '#ffffff';
+  const dataUrl = await toPng(element, {
+    pixelRatio: scale,
+    backgroundColor: bgColor,
+    cacheBust: true,
+    style: {
+      transform: 'none',
+      margin: '0',
+      overflow: 'visible',
+      maxWidth: 'none',
+    },
+    filter: (node) => {
+      if (node instanceof HTMLElement) {
+        if (node.dataset?.excludeExport === 'true' || node.classList?.contains('no-export')) {
+          return false;
+        }
+      }
+      return true;
+    },
+  });
+
+  const baseFilenameNoExt = filename.replace(/\.png$/i, '');
+  const a4Images = await generateA4OptimizedImages(dataUrl, baseFilenameNoExt);
+  if (a4Images.length > 0) {
+    const singlePage = a4Images[0];
+    const byteCharacters = atob(singlePage.base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+    triggerBlobDownload(blob, singlePage.filename);
+    return singlePage.filename;
+  }
+  return filename;
+}
+
+/**
+ * Copies a DOM element as an A4 Vertical (Portrait) image directly to clipboard
+ */
+export async function copyElementAsA4VerticalPngToClipboard(
+  element: HTMLElement,
+  scale: number = 2,
+  isDark: boolean = false
+): Promise<boolean> {
+  const bgColor = isDark ? '#090d16' : '#ffffff';
+  const dataUrl = await toPng(element, {
+    pixelRatio: scale,
+    backgroundColor: bgColor,
+    cacheBust: true,
+    style: {
+      transform: 'none',
+      margin: '0',
+      overflow: 'visible',
+      maxWidth: 'none',
+    },
+    filter: (node) => {
+      if (node instanceof HTMLElement) {
+        if (node.dataset?.excludeExport === 'true' || node.classList?.contains('no-export')) {
+          return false;
+        }
+      }
+      return true;
+    },
+  });
+
+  const a4Images = await generateA4OptimizedImages(dataUrl, 'A4_VERTICALE');
+  if (a4Images.length > 0) {
+    const singlePage = a4Images[0];
+    const byteCharacters = atob(singlePage.base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -593,6 +825,16 @@ export async function exportAllOrganigramZip(
     ? a4GeneratedFiles.map((f) => `  - ${f}`).join('\n')
     : '  - (nessun file A4 generato)';
 
+  const dynamicImgList = areas
+    .map((a) => `  - ${formatExportFileName(a.key, cleanRev, finalDate, 'png')}`)
+    .concat(`  - ${formatExportFileName('COMPLETO', cleanRev, finalDate, 'png')}`)
+    .join('\n');
+
+  const dynamicMmdList = areas
+    .map((a) => `  - ${formatExportFileName(a.key, cleanRev, finalDate, 'mmd')}`)
+    .concat(`  - ${formatExportFileName('COMPLETO', cleanRev, finalDate, 'mmd')}`)
+    .join('\n');
+
   const readmeContent = `ORGANIGRAMMA AZIENDALE — PACCHETTO COMPLETO
 ======================================================
 Codice Revisione: ${cleanRev}
@@ -602,19 +844,13 @@ Data Generazione Pacchetto: ${new Date().toLocaleString('it-IT')}
 CONTENUTO DELL'ARCHIVIO ZIP:
 ------------------------------------------------------
 📁 /immagini (Dimensioni native originali in altissima risoluzione)
-  - ${formatExportFileName('SUPPORTO', cleanRev, finalDate, 'png')}
-  - ${formatExportFileName('STRATEGICI', cleanRev, finalDate, 'png')}
-  - ${formatExportFileName('CORE', cleanRev, finalDate, 'png')}
-  - ${formatExportFileName('COMPLETO', cleanRev, finalDate, 'png')}
+${dynamicImgList}
 
-📁 /immagini_formato_a4 (NUOVO: Ottimizzate e divise per documenti A4 / Word / PowerPoint)
+📁 /immagini_formato_a4 (Ottimizzate per documenti A4 Verticali / Word / PDF / Stampe)
 ${a4ListString}
 
 📁 /mermaid (File sorgente Mermaid)
-  - ${formatExportFileName('SUPPORTO', cleanRev, finalDate, 'mmd')}
-  - ${formatExportFileName('STRATEGICI', cleanRev, finalDate, 'mmd')}
-  - ${formatExportFileName('CORE', cleanRev, finalDate, 'mmd')}
-  - ${formatExportFileName('COMPLETO', cleanRev, finalDate, 'mmd')}
+${dynamicMmdList}
 
 📁 /backup (File di ripristino istantaneo per l'applicazione)
   - ${jsonFilename}
@@ -622,15 +858,13 @@ ${a4ListString}
 GUIDA ALL'INSERIMENTO NEI DOCUMENTI (WORD / GOOGLE DOCS / PPT):
 ------------------------------------------------------
 1. /immagini:
-   Contiene l'organigramma a pixel nativi completi in un'unica immagine continua.
+   Contiene l'organigramma a pixel nativi completi in un'unica immagine continua ad alta risoluzione.
    Ideale se si vuole ridimensionare liberamente su poster, canvas o web.
 
 2. /immagini_formato_a4:
-   Immagini già proporzionate al formato pagina A4 orizzontale (297 x 210 mm).
-   - Se l'organigramma è molto esteso o lungo, è stato automaticamente suddiviso
-     su pagine sequenziali (Parte 1 di N, Parte 2 di N, ecc.) con margini e
-     intestazioni pronti per essere incollati direttamente su fogli A4 senza sbordare
-     né perdere leggibilità!
+   Immagini già proporzionate al formato pagina standard A4 VERTICALE (210 x 297 mm, Portrait).
+   - Pronte per essere inserite direttamente nei documenti Word, relazioni tecniche e manuali
+     senza sbordare e mantenendo la perfetta leggibilità di tutti i reparti e ruoli.
 `;
 
   zip.file('LEGGIMI_ARCHIVIO.txt', readmeContent);

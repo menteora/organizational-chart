@@ -75,14 +75,14 @@ export const NodeCard: React.FC<NodeCardProps> = ({
 
         {/* Person name if present */}
         {node.person && (
-          <div className="mt-1 pt-1 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-semibold text-slate-800 dark:text-slate-100 truncate">
+          <div className="mt-1 pt-1 border-t border-black/10 dark:border-white/10">
+            <div className="text-[9.5px] sm:text-[10px] font-semibold text-slate-800 dark:text-slate-100 truncate">
               {node.person}
-            </span>
+            </div>
             {node.details && (
-              <span className="text-[8.5px] opacity-70 truncate italic shrink-0">
-                ({node.details})
-              </span>
+              <div className="text-[8.5px] opacity-70 truncate italic mt-0.5">
+                {node.details}
+              </div>
             )}
           </div>
         )}

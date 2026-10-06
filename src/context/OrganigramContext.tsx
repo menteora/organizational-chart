@@ -79,6 +79,11 @@ export const OrganigramProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.removeItem('org_app_areas_data_v3');
       localStorage.removeItem('org_app_areas_data_v4');
       localStorage.removeItem('org_app_areas_data_v5');
+      // If previous session stored 'LR', update to 'TB' (Vertical) as default requested
+      const savedOri = localStorage.getItem(STORAGE_KEY_ORIENTATION);
+      if (savedOri === 'LR') {
+        localStorage.setItem(STORAGE_KEY_ORIENTATION, 'TB');
+      }
     } catch {
       // ignore
     }
@@ -119,11 +124,11 @@ export const OrganigramProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [layoutOrientation, setLayoutOrientationState] = useState<LayoutOrientation>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_ORIENTATION);
-      if (saved === 'LR' || saved === 'TB') return saved;
+      if (saved === 'TB') return 'TB';
     } catch {
       // ignore
     }
-    return 'LR'; // Left to Right default as requested
+    return 'TB'; // Default to Vertical (Top-to-Bottom / Portrait)
   });
 
   const [density, setDensityState] = useState<LayoutDensity>(() => {

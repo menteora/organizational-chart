@@ -29,6 +29,10 @@ import {
   triggerFileDownload,
   copyElementAsPngToClipboard,
   exportAllOrganigramZip,
+  exportElementAsA4VerticalPng,
+  copyElementAsA4VerticalPngToClipboard,
+  exportElementAsA4HorizontalPng,
+  copyElementAsA4HorizontalPngToClipboard,
   ZipExportProgress,
 } from '../../utils/exportUtils';
 import { generateMermaidFromArea } from '../../utils/mermaidParser';
@@ -62,6 +66,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   });
 
   const [scale, setScale] = useState<1 | 2 | 3>(2);
+  const [pngOrientation, setPngOrientation] = useState<'vertical' | 'horizontal' | 'native'>('vertical');
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isZipping, setIsZipping] = useState<boolean>(false);
   const [zipProgress, setZipProgress] = useState<ZipExportProgress | null>(null);
@@ -84,12 +89,29 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     setExportDate(`${yyyy}${mm}${dd}`);
   };
 
+  const getTargetElement = (): HTMLElement | null => {
+    // Prefer clean offscreen pre-rendered card matching selectedAreaKey for pristine background and no UI controls
+    const cardId = selectedAreaKey === 'COMPLETO' ? 'export-card-COMPLETO' : `export-card-${selectedAreaKey}`;
+    const offscreenCard = document.getElementById(cardId);
+    if (offscreenCard) return offscreenCard;
+    return exportElementRef.current;
+  };
+
   const handleExportPng = async () => {
-    if (!exportElementRef.current) return;
+    const targetEl = getTargetElement();
+    if (!targetEl) return;
     try {
       setIsExporting(true);
-      await exportElementAsPng(exportElementRef.current, previewFilenamePng, scale, theme === 'dark');
-      setSuccessMessage(`File PNG generato con successo: ${previewFilenamePng}`);
+      if (pngOrientation === 'vertical') {
+        const outName = await exportElementAsA4VerticalPng(targetEl, previewFilenamePng, scale, theme === 'dark');
+        setSuccessMessage(`File PNG Formato A4 Verticale generato: ${outName}`);
+      } else if (pngOrientation === 'horizontal') {
+        const outName = await exportElementAsA4HorizontalPng(targetEl, previewFilenamePng, scale, theme === 'dark');
+        setSuccessMessage(`File PNG Formato A4 Orizzontale generato: ${outName}`);
+      } else {
+        await exportElementAsPng(targetEl, previewFilenamePng, scale, theme === 'dark');
+        setSuccessMessage(`File PNG generato con successo: ${previewFilenamePng}`);
+      }
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (e) {
       console.error('Export PNG failed', e);
@@ -100,15 +122,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleCopyPng = async () => {
-    if (!exportElementRef.current) return;
+    const targetEl = getTargetElement();
+    if (!targetEl) return;
     try {
       setIsExporting(true);
-      const copied = await copyElementAsPngToClipboard(exportElementRef.current, scale, theme === 'dark');
-      if (copied) {
-        setSuccessMessage('Immagine copiata negli appunti! Incollala con Ctrl+V nel tuo documento.');
+      if (pngOrientation === 'vertical') {
+        const copied = await copyElementAsA4VerticalPngToClipboard(targetEl, scale, theme === 'dark');
+        if (copied) {
+          setSuccessMessage('Immagine A4 Verticale copiata negli appunti! Incollala con Ctrl+V nel documento.');
+        } else {
+          await exportElementAsA4VerticalPng(targetEl, previewFilenamePng, scale, theme === 'dark');
+          setSuccessMessage(`File salvato in A4 Verticale: ${previewFilenamePng}`);
+        }
+      } else if (pngOrientation === 'horizontal') {
+        const copied = await copyElementAsA4HorizontalPngToClipboard(targetEl, scale, theme === 'dark');
+        if (copied) {
+          setSuccessMessage('Immagine A4 Orizzontale copiata negli appunti! Incollala con Ctrl+V nel documento.');
+        } else {
+          await exportElementAsA4HorizontalPng(targetEl, previewFilenamePng, scale, theme === 'dark');
+          setSuccessMessage(`File salvato in A4 Orizzontale: ${previewFilenamePng}`);
+        }
       } else {
-        await exportElementAsPng(exportElementRef.current, previewFilenamePng, scale, theme === 'dark');
-        setSuccessMessage(`File salvato: ${previewFilenamePng}`);
+        const copied = await copyElementAsPngToClipboard(targetEl, scale, theme === 'dark');
+        if (copied) {
+          setSuccessMessage('Immagine copiata negli appunti! Incollala con Ctrl+V nel tuo documento.');
+        } else {
+          await exportElementAsPng(targetEl, previewFilenamePng, scale, theme === 'dark');
+          setSuccessMessage(`File salvato: ${previewFilenamePng}`);
+        }
       }
       setTimeout(() => setSuccessMessage(null), 4500);
     } catch (e) {
@@ -355,21 +396,68 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Export Options Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Option 1: High-Res PNG */}
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col justify-between space-y-3 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+            {/* Option 1: High-Res PNG with Vertical A4 by Default */}
+            <div className="p-4 rounded-xl border-2 border-indigo-500/30 dark:border-indigo-500/20 bg-white dark:bg-slate-900 flex flex-col justify-between space-y-3 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors shadow-2xs">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Image className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    Immagine PNG HD
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <Image className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                      Immagine PNG
+                    </span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                    {pngOrientation === 'vertical' ? 'A4 Verticale' : pngOrientation === 'horizontal' ? 'A4 Orizzontale' : 'Nativo'}
                   </span>
                 </div>
                 <p className="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed">
-                  Esporta l'organigramma ad altissima risoluzione, ideale per presentazioni e stampe.
+                  Esporta o copia l'organigramma. Il <strong>formato A4 Verticale</strong> è proporzionato per relazioni tecniche, manuali e Word (210 x 297 mm).
                 </p>
 
+                {/* Orientation Selector */}
+                <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Orientamento Pagina:
+                  </span>
+                  <div className="grid grid-cols-3 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPngOrientation('vertical')}
+                      className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all ${
+                        pngOrientation === 'vertical'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      A4 Verticale
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPngOrientation('horizontal')}
+                      className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all ${
+                        pngOrientation === 'horizontal'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Orizzontale
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPngOrientation('native')}
+                      className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all ${
+                        pngOrientation === 'native'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Nativo
+                    </button>
+                  </div>
+                </div>
+
                 {/* Scale selection */}
-                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-[11px] text-slate-600 dark:text-slate-400">Risoluzione:</span>
                   <div className="flex gap-1">
                     {([1, 2, 3] as const).map((s) => (
@@ -390,7 +478,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 pt-1">
                 <button
                   type="button"
                   onClick={handleCopyPng}
@@ -398,7 +486,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors text-xs"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copia per Documento (Appunti)</span>
+                  <span>
+                    Copia {pngOrientation === 'vertical' ? 'A4 Verticale' : pngOrientation === 'horizontal' ? 'A4 Orizzontale' : 'PNG'} (Appunti)
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -407,7 +497,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   className="w-full py-1.5 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium flex items-center justify-center gap-2 transition-colors text-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>{isExporting ? 'Generazione...' : 'Scarica File PNG'}</span>
+                  <span>
+                    {isExporting ? 'Generazione...' : `Scarica ${pngOrientation === 'vertical' ? 'A4 Verticale' : pngOrientation === 'horizontal' ? 'A4 Orizzontale' : 'PNG'}`}
+                  </span>
                 </button>
               </div>
             </div>
