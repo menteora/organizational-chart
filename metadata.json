@@ -1,0 +1,6 @@
+{
+  "name": "Organigramma Aziendale",
+  "description": "Visualizzatore ed editor avanzato per organigrammi aziendali con import/export Mermaid, backup JSON ed esportazione ad alta risoluzione.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
